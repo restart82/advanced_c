@@ -174,12 +174,15 @@ int main(int argc, char const *argv[])
 
     while (1)
     {
-        command = getch();
-        if (command == 'q' || command == 'Q')
+        if (kbhit())
         {
-            return 0;
+            command = getch();
+            if (command == 'q' || command == 'Q')
+            {
+                return 0;
+            }
+            setCommand(command, &snake);
         }
-        setCommand(command, &snake);
         moveSnake(&snake);
         Sleep(SLEEP_TIME_MS);
         system("cls");

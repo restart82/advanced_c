@@ -4,3 +4,7 @@
 *.exe
 
 homeWork_2/\.vscode/
+
+homeWork_2/test.c
+
+homeWork_2/test2.c
