@@ -7,7 +7,7 @@
 
 #define MAX_X           30
 #define MAX_Y           15
-#define SLEEP_TIME_MS   200
+#define SLEEP_TIME_MS   300
 #define NUMBER_OF_FOOD  3
 
 typedef enum
@@ -29,10 +29,12 @@ typedef struct
     int x;
     int y;
     int pointCounter;
+    int delay;
     tail_t * tail;
     size_t tsize;
     command_t currentCommand;
     bool growing;
+    bool pause;
 }snake_t;
 
 typedef struct
@@ -49,6 +51,7 @@ snake_t initSnake(int x, int y, size_t tsize)
     snake.x = x;
     snake.y = y;
     snake.pointCounter = 0;
+    snake.delay = SLEEP_TIME_MS;
     snake.tsize = tsize;
     snake.tail = (tail_t*)malloc(sizeof(tail_t) * 100);
     for (int i = 0; i < tsize; i++)
@@ -58,6 +61,7 @@ snake_t initSnake(int x, int y, size_t tsize)
     }
     snake.currentCommand = LEFT;
     snake.growing = false;
+    snake.pause = false;
     return snake;
 }
 
@@ -117,7 +121,6 @@ void printSnake(snake_t snake, food_t* food)
         matrix[food[i].x][food[i].y] = 'o';
     }
 
-    // отрисовка
     printLine();
     for (int j = 0; j < MAX_Y; j++)
     {
@@ -129,6 +132,11 @@ void printSnake(snake_t snake, food_t* food)
         printf("|\n");
     }
     printLine();
+    float speed = 1. / snake.delay * 1000;
+    printf("\tpoints:\t%d\n", snake.pointCounter);
+    printf("\tspeed:\t%.2f\n", speed);
+    (snake.pause) ? printf("\tpause ON\n") : printf("\n");
+    
 
 }
 
@@ -206,6 +214,18 @@ void setCommand(char command, snake_t* snake)
             snake->currentCommand = LEFT;
         }
         break;
+    case 'p':
+    case 'P':
+        snake->pause = !snake->pause;
+        break;
+    }
+}
+
+void levelUp(snake_t* snake)
+{
+    if (snake->delay > 50)
+    {
+        snake->delay -= 50;
     }
 }
 
@@ -218,6 +238,7 @@ void eatFood(snake_t* snake, food_t* food)
             snake->pointCounter++;
             snake->growing = true;
             setNewFood(food, i);
+            levelUp(snake);
         }
     }
 }
@@ -235,6 +256,8 @@ void snakeGrow(snake_t* snake)
         snake->growing = false;
     }
 }
+
+
 
 int main(int argc, char const *argv[])
 {
@@ -255,16 +278,21 @@ int main(int argc, char const *argv[])
             }
             setCommand(command, &snake);
         }
-        eatFood(&snake, food);
-        if (snake.growing)
+        if (!snake.pause)
         {
-            snakeGrow(&snake);
+            eatFood(&snake, food);
+            if (snake.growing)
+            {
+                snakeGrow(&snake);
+            }
+            moveSnake(&snake);
         }
-        moveSnake(&snake);
-        Sleep(SLEEP_TIME_MS);
+        Sleep(snake.delay);
         system("cls");
         printSnake(snake, food);
     }
+    system("cls");
+    printf("\tyour score: %d", snake.pointCounter);
 
     return 0;
 }
