@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <conio.h>
 #include <windows.h>
+#include <stdbool.h>
+#include <time.h>
 
-#define MAX_X 30
-#define MAX_Y 15
-
-#define SLEEP_TIME_MS 200
+#define MAX_X           30
+#define MAX_Y           15
+#define SLEEP_TIME_MS   300
+#define NUMBER_OF_FOOD  3
 
 typedef enum
 {
@@ -26,10 +28,21 @@ typedef struct
 {
     int x;
     int y;
+    int pointCounter;
+    int delay;
     tail_t * tail;
     size_t tsize;
     command_t currentCommand;
+    bool growing;
+    bool pause;
 }snake_t;
+
+typedef struct
+{
+    int x;
+    int y;
+    unsigned int randSeed;
+}food_t;
 
 // @**
 snake_t initSnake(int x, int y, size_t tsize)
@@ -37,6 +50,8 @@ snake_t initSnake(int x, int y, size_t tsize)
     snake_t snake;
     snake.x = x;
     snake.y = y;
+    snake.pointCounter = 0;
+    snake.delay = SLEEP_TIME_MS;
     snake.tsize = tsize;
     snake.tail = (tail_t*)malloc(sizeof(tail_t) * 100);
     for (int i = 0; i < tsize; i++)
@@ -45,7 +60,33 @@ snake_t initSnake(int x, int y, size_t tsize)
         snake.tail[i].y = y;
     }
     snake.currentCommand = LEFT;
+    snake.growing = false;
+    snake.pause = false;
     return snake;
+}
+
+int getRandNumber(int bound, int seed)
+{
+    srand(seed);
+    int result = rand() % (bound + 1);
+    return result;
+}
+
+void initFood(food_t* food)
+{
+    for (int i = 0; i < NUMBER_OF_FOOD; i++)
+    {
+        food[i].randSeed = (int)time(NULL) + i;
+        food[i].x = getRandNumber(MAX_X, food[i].randSeed);
+        food[i].y = getRandNumber(MAX_Y, food[i].randSeed);
+    }
+}
+
+void setNewFood(food_t* food, int number)
+{
+    food[number].randSeed = (int)time(NULL);
+    food[number].x = getRandNumber(MAX_X, food[number].randSeed);
+    food[number].y = getRandNumber(MAX_Y, food[number].randSeed);
 }
 
 void printLine()
@@ -58,7 +99,7 @@ void printLine()
     printf(".\n");
 }
 
-void printSnake(snake_t snake)
+void printSnake(snake_t snake, food_t* food)
 {
     char matrix[MAX_X][MAX_Y];
     for (int i = 0; i < MAX_X; i++)
@@ -75,6 +116,11 @@ void printSnake(snake_t snake)
         matrix[snake.tail[i].x][snake.tail[i].y] = '*';
     }
 
+    for (int i = 0; i < NUMBER_OF_FOOD; i++)
+    {
+        matrix[food[i].x][food[i].y] = 'o';
+    }
+
     printLine();
     for (int j = 0; j < MAX_Y; j++)
     {
@@ -86,6 +132,11 @@ void printSnake(snake_t snake)
         printf("|\n");
     }
     printLine();
+    float speed = 1. / snake.delay * 1000;
+    printf("\tpoints:\t%d\n", snake.pointCounter);
+    printf("\tspeed:\t%.2f\n", speed);
+    (snake.pause) ? printf("\tpause ON\n") : printf("\n");
+    
 
 }
 
@@ -163,13 +214,57 @@ void setCommand(char command, snake_t* snake)
             snake->currentCommand = LEFT;
         }
         break;
+    case 'p':
+    case 'P':
+        snake->pause = !snake->pause;
+        break;
     }
 }
 
+void levelUp(snake_t* snake)
+{
+    if (snake->delay > 50)
+    {
+        snake->delay -= 50;
+    }
+}
+
+void eatFood(snake_t* snake, food_t* food)
+{
+    for (int i = 0; i < NUMBER_OF_FOOD; i++)
+    {
+        if (snake->x == food[i].x && snake->y == food[i].y)
+        {
+            snake->pointCounter++;
+            snake->growing = true;
+            setNewFood(food, i);
+            levelUp(snake);
+        }
+    }
+}
+
+void snakeGrow(snake_t* snake)
+{
+    static int growCounter = 0;
+    growCounter++;
+    if (growCounter == snake->tsize)
+    {
+        snake->tsize++;
+        snake->tail[snake->tsize].x = snake->tail[snake->tsize - 1].x;
+        snake->tail[snake->tsize].y = snake->tail[snake->tsize - 1].y;
+        growCounter == 0;
+        snake->growing = false;
+    }
+}
+
+
+
 int main(int argc, char const *argv[])
 {
-    snake_t snake = initSnake(10, 5, 5);
-    printSnake(snake);
+    snake_t snake = initSnake(10, 5, 2);
+    food_t food[NUMBER_OF_FOOD];
+    initFood(food);
+    printSnake(snake, food);
     char command;
 
     while (1)
@@ -179,15 +274,25 @@ int main(int argc, char const *argv[])
             command = getch();
             if (command == 'q' || command == 'Q')
             {
-                return 0;
+                break;
             }
             setCommand(command, &snake);
         }
-        moveSnake(&snake);
-        Sleep(SLEEP_TIME_MS);
+        if (!snake.pause)
+        {
+            eatFood(&snake, food);
+            if (snake.growing)
+            {
+                snakeGrow(&snake);
+            }
+            moveSnake(&snake);
+        }
+        Sleep(snake.delay);
         system("cls");
-        printSnake(snake);
+        printSnake(snake, food);
     }
+    system("cls");
+    printf("\tyour score: %d", snake.pointCounter);
 
     return 0;
 }
