@@ -4,7 +4,6 @@
 #include <string.h>
 
 
-
 int findMaxPrefSuff(char* str1, char* str2)
 {
     for (int i = 0; i < strlen(str1); ++i)

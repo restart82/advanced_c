@@ -1,17 +1,12 @@
-// Написать алгоритм перевода из инфиксной записи в обратную польскую.
-// Для его реализации нужны данные по приоритетам операций.
-// Реализовать алгоритм, используя побитовые операции (&, |, ^).
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <string.h>
 
 #define BUFFER_SIZE 255
 #define STACK_SIZE 255
 
-char oper[STACK_SIZE] = {0};
-int oend = 0;
+char oper[STACK_SIZE] = {0}; // стек для операций + - * / ( )
+int oend = 0; // заполненность стека
 
 void push(char v)
 {
@@ -20,15 +15,10 @@ void push(char v)
 
 char pop()
 {
-    if (oend >= BUFFER_SIZE)
+    if (oend <= 0 || oend >= BUFFER_SIZE)
     {
         fprintf(stderr, "Stack overflow\n");
         exit(1);
-    }
-    if (oend <= 0)
-    {
-        fprintf(stderr, "Stack underflow\n");
-        exit(2);
     }
     return oper[--oend];
 }
@@ -38,34 +28,30 @@ bool emptyStack()
     return (oend == 0);
 }
 
-bool isDigit(char c)
+bool isDigit(char c) // проверяем является ли символ цифрой
 {
     return ((c >= '0') && (c <= '9'));
 }
 
 bool isOperator(char c)
 {
-    return  (c == '&') ||
-            (c == '|') ||
-            (c == '^');
+    return  (c == '+') ||
+            (c == '-') ||
+            (c == '*') ||
+            (c == '/');
 }
 
 int priority(char c)
 {
-    int priority = 0;
-    switch (c)
+    if (c == '+' || c == '-')
     {
-    case '|':
-        priority = 1;
-        break;
-    case '^':
-        priority = 2;
-        break;
-    case '&':
-        priority = 3;
-        break;
+        return 1;
     }
-    return priority;
+    if (c == '*' || c == '/')
+    {
+        return 2;
+    }
+    return 0;
 }
 
 int main(int argc, char const *argv[])
@@ -145,4 +131,3 @@ int main(int argc, char const *argv[])
     
     return 0;
 }
-
