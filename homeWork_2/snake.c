@@ -29,12 +29,11 @@ typedef struct
     int x;
     int y;
     int pointCounter;
-    int delay;
     tail_t * tail;
     size_t tsize;
     command_t currentCommand;
     bool growing;
-    bool pause;
+    int growCounter;
 }snake_t;
 
 typedef struct
@@ -44,6 +43,12 @@ typedef struct
     unsigned int randSeed;
 }food_t;
 
+typedef struct
+{
+    bool pause;
+    int delay;
+}game_t;
+
 // @**
 snake_t initSnake(int x, int y, size_t tsize)
 {
@@ -51,7 +56,6 @@ snake_t initSnake(int x, int y, size_t tsize)
     snake.x = x;
     snake.y = y;
     snake.pointCounter = 0;
-    snake.delay = SLEEP_TIME_MS;
     snake.tsize = tsize;
     snake.tail = (tail_t*)malloc(sizeof(tail_t) * 100);
     for (int i = 0; i < tsize; i++)
@@ -61,7 +65,7 @@ snake_t initSnake(int x, int y, size_t tsize)
     }
     snake.currentCommand = LEFT;
     snake.growing = false;
-    snake.pause = false;
+    snake.growCounter = 0;
     return snake;
 }
 
@@ -99,7 +103,7 @@ void printLine()
     printf(".\n");
 }
 
-void printSnake(snake_t snake, food_t* food)
+void view(snake_t snake_1, snake_t snake_2, food_t* food, game_t game)
 {
     char matrix[MAX_X][MAX_Y];
     for (int i = 0; i < MAX_X; i++)
@@ -110,10 +114,16 @@ void printSnake(snake_t snake, food_t* food)
         }
     }
 
-    matrix[snake.x][snake.y] = '@';
-    for (int i = 0; i < snake.tsize; i++)
+    matrix[snake_1.x][snake_1.y] = '@';
+    for (int i = 0; i < snake_1.tsize; i++)
     {
-        matrix[snake.tail[i].x][snake.tail[i].y] = '*';
+        matrix[snake_1.tail[i].x][snake_1.tail[i].y] = '*';
+    }
+
+    matrix[snake_2.x][snake_2.y] = 'Q';
+    for (int i = 0; i < snake_2.tsize; i++)
+    {
+        matrix[snake_2.tail[i].x][snake_2.tail[i].y] = '*';
     }
 
     for (int i = 0; i < NUMBER_OF_FOOD; i++)
@@ -132,10 +142,11 @@ void printSnake(snake_t snake, food_t* food)
         printf("|\n");
     }
     printLine();
-    float speed = 1. / snake.delay * 1000;
-    printf("\tpoints:\t%d\n", snake.pointCounter);
+    float speed = 1. / game.delay * 1000;
+    printf("\t1-st snake points:  %d\n", snake_1.pointCounter);
+    printf("\t2-nd snake points:  %d\n", snake_2.pointCounter);
     printf("\tspeed:\t%.2f\n", speed);
-    (snake.pause) ? printf("\tpause ON\n") : printf("\n");
+    game.pause ? printf("\tpause ON\n") : printf("\n");
     
 
 }
@@ -182,54 +193,78 @@ void moveSnake(snake_t* snake)
     }
 }
 
-void setCommand(char command, snake_t* snake)
+void setCommand(char command, snake_t* snake_1, snake_t* snake_2)
 {
     switch (command)
     {
     case 'w':
     case 'W':
-        if (snake->currentCommand != DOWN)
+        if (snake_1->currentCommand != DOWN)
         {
-            snake->currentCommand = UP;
+            snake_1->currentCommand = UP;
         }
         break;
     case 'd':
     case 'D':
-        if (snake->currentCommand != LEFT)
+        if (snake_1->currentCommand != LEFT)
         {
-            snake->currentCommand = RIGHT;
+            snake_1->currentCommand = RIGHT;
         }
         break;
     case 's':
     case 'S':
-        if (snake->currentCommand != UP)
+        if (snake_1->currentCommand != UP)
         {
-            snake->currentCommand = DOWN;
+            snake_1->currentCommand = DOWN;
         }
         break;
     case 'a':
     case 'A':
-        if (snake->currentCommand != RIGHT)
+        if (snake_1->currentCommand != RIGHT)
         {
-            snake->currentCommand = LEFT;
+            snake_1->currentCommand = LEFT;
         }
         break;
-    case 'p':
-    case 'P':
-        snake->pause = !snake->pause;
+    case 'i':
+    case 'I':
+        if (snake_2->currentCommand != DOWN)
+        {
+            snake_2->currentCommand = UP;
+        }
+        break;
+    case 'l':
+    case 'L':
+        if (snake_2->currentCommand != LEFT)
+        {
+            snake_2->currentCommand = RIGHT;
+        }
+        break;
+    case 'k':
+    case 'K':
+        if (snake_2->currentCommand != UP)
+        {
+            snake_2->currentCommand = DOWN;
+        }
+        break;
+    case 'j':
+    case 'J':
+        if (snake_2->currentCommand != RIGHT)
+        {
+            snake_2->currentCommand = LEFT;
+        }
         break;
     }
 }
 
-void levelUp(snake_t* snake)
+void levelUp(game_t* game)
 {
-    if (snake->delay > 50)
+    if (game->delay > 50)
     {
-        snake->delay -= 50;
+        game->delay -= 25;
     }
 }
 
-void eatFood(snake_t* snake, food_t* food)
+void eatFood(snake_t* snake, food_t* food, game_t* game)
 {
     for (int i = 0; i < NUMBER_OF_FOOD; i++)
     {
@@ -238,21 +273,20 @@ void eatFood(snake_t* snake, food_t* food)
             snake->pointCounter++;
             snake->growing = true;
             setNewFood(food, i);
-            levelUp(snake);
+            levelUp(game);
         }
     }
 }
 
 void snakeGrow(snake_t* snake)
 {
-    static int growCounter = 0;
-    growCounter++;
-    if (growCounter == snake->tsize)
+    snake->growCounter++;
+    if (snake->currentCommand == snake->tsize)
     {
         snake->tsize++;
         snake->tail[snake->tsize].x = snake->tail[snake->tsize - 1].x;
         snake->tail[snake->tsize].y = snake->tail[snake->tsize - 1].y;
-        growCounter == 0;
+        snake->growCounter == 0;
         snake->growing = false;
     }
 }
@@ -261,10 +295,14 @@ void snakeGrow(snake_t* snake)
 
 int main(int argc, char const *argv[])
 {
+    game_t game;
+    game.delay = SLEEP_TIME_MS;
+    game.pause = false;
     snake_t snake = initSnake(10, 5, 2);
+    snake_t secondSnake = initSnake(10, 10, 2);
     food_t food[NUMBER_OF_FOOD];
     initFood(food);
-    printSnake(snake, food);
+    view(snake, secondSnake, food, game);
     char command;
 
     while (1)
@@ -276,23 +314,37 @@ int main(int argc, char const *argv[])
             {
                 break;
             }
-            setCommand(command, &snake);
+            if (command == 'p'|| command == 'P')
+            {
+                game.pause = !game.pause;
+            }
+            setCommand(command, &snake, &secondSnake);
         }
-        if (!snake.pause)
+
+        if (!game.pause)
         {
-            eatFood(&snake, food);
+            eatFood(&snake, food, &game);
+            eatFood(&secondSnake, food, &game);
             if (snake.growing)
             {
                 snakeGrow(&snake);
             }
+            if (secondSnake.growing)
+            {
+                snakeGrow(&secondSnake);
+            }
             moveSnake(&snake);
+            moveSnake(&secondSnake);
         }
-        Sleep(snake.delay);
+
+        Sleep(game.delay);
         system("cls");
-        printSnake(snake, food);
+        view(snake, secondSnake, food, game);
     }
     system("cls");
-    printf("\tyour score: %d", snake.pointCounter);
+    printf("\n");
+    printf("\t1-st snake score: %d\n", snake.pointCounter);
+    printf("\t2-nd snake score: %d\n", secondSnake.pointCounter);
 
     return 0;
 }
